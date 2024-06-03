@@ -3,8 +3,6 @@ using CourseManagement.Services.Interfaces;
 using CourseManagement.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace CourseManagement.Areas.Admin.Controllers
 {
@@ -75,5 +73,86 @@ namespace CourseManagement.Areas.Admin.Controllers
             await _courseService.AddCourseAsync(course);
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> Edit(int id)
+        {
+            var course = await _courseService.GetCourseByIdAsync(id);
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            var courseVM = new CourseVM
+            {
+                Id = course.Id,
+                Title = course.Title,
+                Description = course.Description,
+                Price = course.Price,
+                CategoryId = course.CategoryId,
+                ImageUrl = course.ImageUrl
+            };
+
+            ViewData["Categories"] = new SelectList(await _categoryService.GetAllCategoriesAsync(), "Id", "Name", courseVM.CategoryId);
+            return View(courseVM);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, CourseVM courseVM)
+        {
+            if (id != courseVM.Id)
+            {
+                return BadRequest();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["Categories"] = new SelectList(await _categoryService.GetAllCategoriesAsync(), "Id", "Name", courseVM.CategoryId);
+                return View(courseVM);
+            }
+
+            var course = await _courseService.GetCourseByIdAsync(id);
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            if (courseVM.ImageFile != null && courseVM.ImageFile.Length > 0)
+            {
+                var fileName = Path.GetFileName(courseVM.ImageFile.FileName);
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/assets/img", fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await courseVM.ImageFile.CopyToAsync(stream);
+                }
+
+                course.ImageUrl = $"/assets/img/{fileName}";
+            }
+
+            course.Title = courseVM.Title;
+            course.Description = courseVM.Description;
+            course.Price = courseVM.Price;
+            course.CategoryId = courseVM.CategoryId;
+
+            await _courseService.UpdateCourseAsync(course);
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var course = await _courseService.GetCourseByIdAsync(id);
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            await _courseService.DeleteCourseAsync(id);
+            return RedirectToAction(nameof(Index));
+        }
+
+
+
     }
 }

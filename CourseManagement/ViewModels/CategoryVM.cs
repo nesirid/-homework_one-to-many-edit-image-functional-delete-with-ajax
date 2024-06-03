@@ -8,5 +8,6 @@ namespace CourseManagement.ViewModels
         public string Name { get; set; }
         public string Description { get; set; }
         public IFormFile IconFile { get; set; }
+
     }
 }
